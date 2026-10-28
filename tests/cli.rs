@@ -259,7 +259,7 @@ fn runs_a_job_waits_and_streams_logs() {
         .unwrap();
     assert_eq!(
         start.headers["content-type"],
-        "application/vnd.graal.systems.v1.jobrun+json;charset=UTF-8"
+        "application/vnd.graal.systems.v1.run+json;charset=UTF-8"
     );
     let body: serde_json::Value = serde_json::from_str(&start.body).unwrap();
     assert_eq!(body["infrastructure_id"], "k8s-main");
@@ -377,4 +377,39 @@ fn application_login_then_whoami_and_logout() {
     assert!(out.status.success());
     let out = graalctl(&dir, &[], &["projects", "list"], None);
     assert!(stderr(&out).contains("not logged in"), "{}", stderr(&out));
+}
+
+#[test]
+fn uploads_a_library_as_multipart_and_prints_its_key() {
+    let mock = Mock::start(|r| match (r.method.as_str(), r.path.as_str()) {
+        ("POST", "/api/v1/libraries") => {
+            (201, vec![], r#"[{"key":"k-123","name":"job.py"}]"#.into())
+        }
+        _ => (404, vec![], "{}".into()),
+    });
+    let dir = temp_dir("upload");
+    let file = dir.join("job.py");
+    std::fs::write(&file, "print('hello')\n").unwrap();
+    let api = format!("{}/api/v1", mock.url);
+    let env = [
+        ("GRAAL_TOKEN", "t"),
+        ("GRAAL_API_URL", api.as_str()),
+        ("GRAAL_TENANT", "acme"),
+    ];
+
+    let out = graalctl(
+        &dir,
+        &env,
+        &["libraries", "upload", file.to_str().unwrap()],
+        None,
+    );
+    assert!(out.status.success(), "{}", stderr(&out));
+    assert_eq!(stdout(&out), "k-123\n");
+
+    let req = &mock.requests()[0];
+    assert!(req.headers["content-type"].starts_with("multipart/form-data; boundary="));
+    assert!(req
+        .body
+        .contains("Content-Disposition: form-data; name=\"file\"; filename=\"job.py\""));
+    assert!(req.body.contains("print('hello')"));
 }

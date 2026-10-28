@@ -707,7 +707,7 @@ fn resources(g: &Globals, s: &Session, command: Command) -> Result<()> {
             } => {
                 let body = run_body(s, &options, format!("graalctl run of {id}"))?;
                 let job_path = format!("/jobs/{}", encode(&id));
-                let run = c.post(&format!("{job_path}/runs"), "jobrun", &body)?;
+                let run = c.post(&format!("{job_path}/runs"), "run", &body)?;
                 let run_id = run.get("id").and_then(Value::as_str).map(str::to_string);
                 if !(options.wait || follow) {
                     output::single(&run, out);
@@ -720,7 +720,7 @@ fn resources(g: &Globals, s: &Session, command: Command) -> Result<()> {
                 let last = wait_run(
                     c,
                     &run_path,
-                    "jobrun",
+                    "run",
                     logs.as_deref(),
                     options.interval,
                     options.timeout,
@@ -799,7 +799,7 @@ fn resources(g: &Globals, s: &Session, command: Command) -> Result<()> {
                 limit,
             } => {
                 let (path, kind) = match (&job, &workflow, &project) {
-                    (Some(j), _, _) => (format!("/jobs/{}/runs", encode(j)), "jobrun"),
+                    (Some(j), _, _) => (format!("/jobs/{}/runs", encode(j)), "run"),
                     (_, Some(w), _) => (format!("/workflows/{}/runs", encode(w)), "workflowrun"),
                     (_, _, Some(p)) => (format!("/projects/{}/runs", encode(p)), "jobrun-with-job"),
                     _ => ("/runs".into(), "jobrun-with-job"),
@@ -823,8 +823,7 @@ fn resources(g: &Globals, s: &Session, command: Command) -> Result<()> {
             RunsCommand::Logs { run, job, follow } => {
                 let path = format!("/jobs/{}/runs/{}", encode(&job), encode(&run));
                 if follow {
-                    let last =
-                        wait_run(c, &path, "jobrun", Some(&format!("{path}/logs")), 3, None)?;
+                    let last = wait_run(c, &path, "run", Some(&format!("{path}/logs")), 3, None)?;
                     finish(&last, Format::Id)?
                 } else {
                     drain_logs(c, &format!("{path}/logs"), &mut LogCursor::default())?;
@@ -877,7 +876,11 @@ fn resources(g: &Globals, s: &Session, command: Command) -> Result<()> {
                 out,
             ),
             LibrariesCommand::Upload { file } => {
-                let meta = c.upload("/libraries", "blobmetadata", &file)?;
+                // The API answers with the list of uploaded files.
+                let meta = items(&c.upload("/libraries", "blobmetadata", &file)?)
+                    .into_iter()
+                    .next()
+                    .unwrap_or(Value::Null);
                 match out {
                     Format::Table => println!("{}", output::cell(output::lookup(&meta, "key|id"))),
                     f => output::single(&meta, f),
@@ -891,10 +894,7 @@ fn resources(g: &Globals, s: &Session, command: Command) -> Result<()> {
 
 fn run_path(run: &str, job: Option<&str>, workflow: Option<&str>) -> (String, &'static str) {
     match (job, workflow) {
-        (Some(j), _) => (
-            format!("/jobs/{}/runs/{}", encode(j), encode(run)),
-            "jobrun",
-        ),
+        (Some(j), _) => (format!("/jobs/{}/runs/{}", encode(j), encode(run)), "run"),
         (_, Some(w)) => (
             format!("/workflows/{}/runs/{}", encode(w), encode(run)),
             "workflowrun",

@@ -98,6 +98,21 @@ Jobs and workflows are created from their JSON definition, as shown in the conso
 "Copy as…" menu or in the [API documentation](https://graal.systems/en/docs/api):
 
 ```sh
+KEY=$(graalctl libraries upload first_job.py)      # code reaches runs through libraries
+cat > job.json <<JSON
+{
+  "name": "first-job",
+  "identity_id": "$IDENTITY_ID",
+  "timeout_seconds": 900,
+  "max_retries": 0,
+  "libraries": [{ "type": "file", "key": "$KEY" }],
+  "options": {
+    "type": "python",
+    "file": "first_job.py",
+    "instance_type": "Standard_Development_D1_v1"
+  }
+}
+JSON
 graalctl jobs create --project 7f1c... -f job.json
 ```
 
