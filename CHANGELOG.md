@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1
+
+- `jobs run`, `runs get`, `runs wait` and `runs logs --follow` use the
+  `application/vnd.graal.systems.v1.jobrun+json` media type that the API routes require;
+  1.0.0 sent `run+json` and starting a run was refused.
+
 ## 1.0.0
 
 Complete rewrite in Rust of the former Java (GraalVM native image) CLI.
