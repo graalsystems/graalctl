@@ -58,7 +58,7 @@ const JOB_COLUMNS: &[Column] = &[
     ("NAME", "name"),
     ("TYPE", "options.type|type"),
     ("PROJECT", "project_id"),
-    ("SCHEDULE", "schedule.cron|schedule"),
+    ("SCHEDULE", "schedule.cron_expression|schedule.type"),
     ("UPDATED", "updated|created"),
 ];
 const RUN_COLUMNS: &[Column] = &[
@@ -73,7 +73,7 @@ const WORKFLOW_COLUMNS: &[Column] = &[
     ("ID", "id"),
     ("NAME", "name"),
     ("PROJECT", "project_id"),
-    ("SCHEDULE", "schedule.cron|schedule"),
+    ("SCHEDULE", "schedule.cron_expression|schedule.type"),
     ("UPDATED", "updated|created"),
 ];
 const INFRASTRUCTURE_COLUMNS: &[Column] = &[
@@ -574,7 +574,10 @@ fn patch_document(a: &PatchArgs) -> Result<Value> {
             format!("/{path}")
         };
         let value = serde_json::from_str(value).unwrap_or_else(|_| Value::String(value.clone()));
-        ops.push(json!({"op": "replace", "path": path, "value": value}));
+        // "add", not "replace": the API leaves empty fields out of some resources (a user
+        // without description), and "replace" on a missing member is refused. "add" sets the
+        // member whether it exists or not (RFC 6902, section 4.1).
+        ops.push(json!({"op": "add", "path": path, "value": value}));
     }
     Ok(Value::Array(ops))
 }
@@ -689,7 +692,11 @@ fn resources(g: &Globals, s: &Session, command: Command) -> Result<()> {
                 let ops = if clear {
                     json!([{ "op": "remove", "path": "/schedule" }])
                 } else {
-                    json!([{ "op": "replace", "path": "/schedule", "value": cron }])
+                    json!([{
+                        "op": "replace",
+                        "path": "/schedule",
+                        "value": { "type": "cron", "cron_expression": cron }
+                    }])
                 };
                 let job = c.patch(&format!("/jobs/{}", encode(&id)), "job", &ops)?;
                 match out {
@@ -1148,8 +1155,8 @@ mod tests {
         assert_eq!(
             patch_document(&a).unwrap(),
             json!([
-                {"op": "replace", "path": "/timeout_seconds", "value": 600},
-                {"op": "replace", "path": "/description", "value": "nightly load"}
+                {"op": "add", "path": "/timeout_seconds", "value": 600},
+                {"op": "add", "path": "/description", "value": "nightly load"}
             ])
         );
     }
