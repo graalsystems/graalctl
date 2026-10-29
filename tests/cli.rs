@@ -259,7 +259,7 @@ fn runs_a_job_waits_and_streams_logs() {
         .unwrap();
     assert_eq!(
         start.headers["content-type"],
-        "application/vnd.graal.systems.v1.run+json;charset=UTF-8"
+        "application/vnd.graal.systems.v1.jobrun+json;charset=UTF-8"
     );
     let body: serde_json::Value = serde_json::from_str(&start.body).unwrap();
     assert_eq!(body["infrastructure_id"], "k8s-main");
