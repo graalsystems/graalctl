@@ -3,9 +3,18 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  # Manual release from the default branch: the tag is created by the release job.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, without the v (must match Cargo.toml), e.g. 1.0.0"
+        required: true
 
 permissions:
   contents: write
+
+env:
+  TAG: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.ref_name }}
 
 jobs:
   build:
@@ -32,7 +41,7 @@ jobs:
         shell: bash
         run: |
           version="$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)"
-          test "v$version" = "$GITHUB_REF_NAME" || { echo "Cargo.toml version $version does not match tag $GITHUB_REF_NAME"; exit 1; }
+          test "v$version" = "$TAG" || { echo "Cargo.toml version $version does not match tag $TAG"; exit 1; }
       - name: Build
         run: cargo build --release --locked --target ${{ matrix.target }}
       - name: Package
@@ -60,4 +69,5 @@ jobs:
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes
+        # Creates the tag on the built commit when it does not exist yet.
+        run: gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$TAG" --generate-notes
