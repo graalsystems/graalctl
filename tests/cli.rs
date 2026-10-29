@@ -180,7 +180,13 @@ fn lists_projects_with_tenant_header_and_media_type() {
 
 #[test]
 fn schedules_a_job_with_json_patch() {
-    let mock = Mock::start(|_| (200, vec![], r#"{"id":"j1","schedule":"0 6 * * *"}"#.into()));
+    let mock = Mock::start(|_| {
+        (
+            200,
+            vec![],
+            r#"{"id":"j1","schedule":{"type":"cron","cron_expression":"0 6 * * *"}}"#.into(),
+        )
+    });
     let dir = temp_dir("schedule");
     let api = format!("{}/api/v1", mock.url);
     let env = [
@@ -201,7 +207,11 @@ fn schedules_a_job_with_json_patch() {
     let body: serde_json::Value = serde_json::from_str(&req.body).unwrap();
     assert_eq!(
         body,
-        serde_json::json!([{"op": "replace", "path": "/schedule", "value": "0 6 * * *"}])
+        serde_json::json!([{
+            "op": "replace",
+            "path": "/schedule",
+            "value": {"type": "cron", "cron_expression": "0 6 * * *"}
+        }])
     );
 }
 

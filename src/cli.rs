@@ -282,7 +282,7 @@ pub struct PatchArgs {
     /// JSON Patch document (file path or - for stdin).
     #[arg(long, short, required_unless_present = "set")]
     pub file: Option<PathBuf>,
-    /// Replace a field: /path=value (value parsed as JSON when possible; repeatable).
+    /// Set a field: /path=value (value parsed as JSON when possible; repeatable).
     #[arg(long, value_parser = parse_key_value)]
     pub set: Vec<(String, String)>,
 }

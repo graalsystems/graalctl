@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.2
+
+Fixes found by running graalctl against a real graal installation.
+
+- `jobs schedule` sends the schedule object the API expects
+  (`{"type": "cron", "cron_expression": "..."}`); 1.0.1 sent the bare cron string and the API
+  answered 500. The `SCHEDULE` column of `jobs list` and `workflows list` shows the cron
+  expression, or `once` for a job without schedule.
+- `jobs patch --set` uses the JSON Patch `add` operation, which sets a field whether the API
+  returned it or not; `replace` was refused on fields the API leaves out when empty.
+
 ## 1.0.1
 
 - `jobs run`, `runs get`, `runs wait` and `runs logs --follow` use the
