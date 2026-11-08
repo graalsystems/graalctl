@@ -132,7 +132,7 @@ graalctl jobs schedule 5ea3... --clear
 graalctl api /instance-types
 graalctl api /jobs/5ea3.../runs -q page=0 -q size=10
 graalctl api -X PATCH /jobs/5ea3... -d '[{"op":"replace","path":"/description","value":"nightly"}]'
-graalctl api /projects -t project -d @project.json      # POST with the project media type
+graalctl api /projects --type project -d @project.json # POST with the project media type
 ```
 
 ### Output formats
